@@ -13,7 +13,7 @@ var (
 	mapLock                sync.Mutex
 	TokenVerifyError       = errors.New("token验证失败！")
 	TokenVerifyExpireError = errors.New("token已失效！")
-	signKey                = []byte("huamingauthenticationkey")
+	defaultSignKey         = []byte("authenticationsignkey")
 	cacheVerifyUser        = map[int]CacheUserAfterVerify{}
 )
 
@@ -44,6 +44,7 @@ type CustomClaims struct {
 type Jwt struct {
 	AuthenticationUserModel
 	cacheVerifyUserExpire time.Duration
+	signKey               []byte
 }
 
 type Options func(j *Jwt)
@@ -54,10 +55,17 @@ func JwtWithCacheVerifyUserExpire(duration time.Duration) Options {
 	}
 }
 
+func JwtWithSignKey(key []byte) Options {
+	return func(j *Jwt) {
+		j.signKey = key
+	}
+}
+
 func NewJwt(model AuthenticationUserModel, options ...Options) *Jwt {
 	j := &Jwt{
-		model,
-		7 * time.Hour,
+		AuthenticationUserModel: model,
+		cacheVerifyUserExpire:   7 * time.Hour,
+		signKey:                 defaultSignKey,
 	}
 	for _, o := range options {
 		o(j)
@@ -70,6 +78,10 @@ func (j *Jwt) DeleteCacheElement(id int) {
 	if _, ok := cacheVerifyUser[id]; ok {
 		delete(cacheVerifyUser, id)
 	}
+}
+
+func (j *Jwt) SetSignKey(key []byte) {
+	j.signKey = key
 }
 
 func clearExpireCacheAuth() {
@@ -110,7 +122,7 @@ func (j *Jwt) GetToken(user AuthenticationUserModel, expireHour ...int) (*Token,
 		},
 	})
 
-	token, err := claims.SignedString(signKey)
+	token, err := claims.SignedString(j.signKey)
 
 	if err != nil {
 		return nil, err
@@ -122,7 +134,7 @@ func (j *Jwt) GetToken(user AuthenticationUserModel, expireHour ...int) (*Token,
 func (j *Jwt) GetUserByToken(t string) (AuthenticationUserModel, error) {
 	claims := CustomClaims{}
 	token, err := jwt.ParseWithClaims(t, &claims, func(token *jwt.Token) (interface{}, error) {
-		return signKey, nil
+		return j.signKey, nil
 	})
 	if err != nil {
 		return nil, err
