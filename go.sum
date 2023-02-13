@@ -1,4 +1,2 @@
-github.com/Niexiawei/golang-utils v0.0.0-20230210071210-79b272974969 h1:RUCW9yJXIeCg//eeqNX4kWrPpqgg4HVhzT+bCfP8Ids=
-github.com/Niexiawei/golang-utils v0.0.0-20230210071210-79b272974969/go.mod h1:/j2vXEoTov17nqx1cVQxWuE/puYhvEt2eYicEDJEIaw=
 github.com/golang-jwt/jwt/v4 v4.4.3 h1:Hxl6lhQFj4AnOX6MLrsCb/+7tCj7DxP7VA+2rDIq5AU=
 github.com/golang-jwt/jwt/v4 v4.4.3/go.mod h1:m21LjoU+eqJr34lmDMbreY2eSTRJ1cv77w39/MY0Ch0=

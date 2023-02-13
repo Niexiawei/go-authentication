@@ -2,8 +2,14 @@ package authentication
 
 import (
 	"errors"
-	"github.com/Niexiawei/golang-utils/httpresponse"
+	"fmt"
+	golangutils "github.com/Niexiawei/golang-utils"
+	"github.com/Niexiawei/golang-utils/pathtool"
+	"github.com/Niexiawei/golang-utils/random"
 	"github.com/golang-jwt/jwt/v4"
+	"io"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -12,53 +18,11 @@ var (
 	mapLock                sync.Mutex
 	TokenVerifyError       = errors.New("token验证失败！")
 	TokenVerifyExpireError = errors.New("token已失效！")
+	ErrNoSetSignKeyPath    = errors.New("没有设置 sign key 存储路径")
+	ErrRefreshSignKeyFail  = errors.New("刷新 sign key 失败")
 	defaultSignKey         = []byte("authenticationsignkey")
 	cacheVerifyUser        = map[int]CacheUserAfterVerify{}
 )
-
-const (
-	GetAuthKey = "authentication"
-)
-
-type AuthenticationUserModel interface {
-	GetUserId() int
-	GetUser(userid int) (any, error)
-}
-
-type CacheUserAfterVerify struct {
-	User   AuthenticationUserModel
-	Expire time.Time
-}
-
-type Token struct {
-	Token     string `json:"token"`
-	ExpiresIn int64  `json:"expires_in"`
-}
-
-type CustomClaims struct {
-	UserId int `json:"userId"`
-	jwt.RegisteredClaims
-}
-
-type Jwt struct {
-	AuthenticationUserModel
-	cacheVerifyUserExpire time.Duration
-	signKey               []byte
-}
-
-type Options func(j *Jwt)
-
-func JwtWithCacheVerifyUserExpire(duration time.Duration) Options {
-	return func(j *Jwt) {
-		j.cacheVerifyUserExpire = duration
-	}
-}
-
-func JwtWithSignKey(key []byte) Options {
-	return func(j *Jwt) {
-		j.signKey = key
-	}
-}
 
 func NewJwt(model AuthenticationUserModel, options ...Options) *Jwt {
 	j := &Jwt{
@@ -172,58 +136,53 @@ func (j *Jwt) GetUserByToken(t string) (AuthenticationUserModel, error) {
 	return user, nil
 }
 
-type ginContext interface {
-	GetHeader(key string) string
-	GetQuery(key string) (string, bool)
-	Abort()
-	Next()
-	Set(key string, value any)
-	JSON(code int, obj any)
-}
-
-func AuthenticationMiddleware[T ginContext](j *Jwt) func(T) {
-	return func(c T) {
-		Authentication(j, c)
+func (j *Jwt) RefreshSignKey() error {
+	if j.signKeyPath == "" {
+		return ErrNoSetSignKeyPath
 	}
+	newpath := j.signKeyPath + "_backup"
+	_ = os.Rename(j.signKeyPath, newpath)
+	_, err := getSignKey(j.signKeyPath)
+	if err != nil {
+		_ = os.Rename(newpath, j.signKeyPath)
+		return fmt.Errorf("%w(%s)", ErrRefreshSignKeyFail, err.Error())
+	}
+	_ = os.Remove(newpath)
+	return nil
 }
 
-func Authentication(j *Jwt, c ginContext) {
+func getSignKey(path string) (sign []byte, err error) {
 	var (
-		token string
-		resp  = httpresponse.NewResponse(c, 0, "")
+		signByte []byte
 	)
 
-	t1 := c.GetHeader("token")
-	t2, _ := c.GetQuery("token")
-
-	if t1 == "" && t2 == "" {
-		resp.WithMessage(TokenVerifyError.Error()).WithCode(401).ResultOk()
-		c.Abort()
-		return
-	}
-
-	if t2 != "" {
-		token = t2
-	}
-
-	if t1 != "" {
-		token = t1
-	}
-
-	auth, err := j.GetUserByToken(token)
-
-	if err != nil {
-		if errors.Is(err, TokenVerifyError) {
-			resp.WithMessage(TokenVerifyError.Error()).WithCode(401).ResultOk()
-		} else if errors.Is(err, TokenVerifyExpireError) {
-			resp.WithMessage(TokenVerifyExpireError.Error()).WithCode(403).ResultOk()
-		} else {
-			resp.WithMessage(TokenVerifyError.Error()).WithCode(401).ResultOk()
+	if ok, _ := pathtool.PathExists(path); ok {
+		if ok, _ := pathtool.IsDir(path); !ok {
+			f, err := os.Open(path)
+			if err != nil {
+				return nil, err
+			}
+			defer f.Close()
+			signByte, err = io.ReadAll(f)
+			if err != nil {
+				return nil, err
+			}
+			return signByte, nil
 		}
-		c.Abort()
-		return
 	}
-
-	c.Set(GetAuthKey, auth)
-	c.Next()
+	basePath := filepath.Dir(path)
+	err = os.MkdirAll(basePath, 0777)
+	if err != nil {
+		return nil, err
+	}
+	ff, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0644)
+	if err != nil {
+		return nil, err
+	}
+	signKey := random.RandStr(32)
+	_, err = ff.WriteString(signKey)
+	if err != nil {
+		return nil, err
+	}
+	return golangutils.StringToBytes(signKey), nil
 }
