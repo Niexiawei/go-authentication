@@ -9,6 +9,8 @@ const (
 	GetAuthKey = "authentication"
 )
 
+type Guard string
+
 type AuthenticationUserModel interface {
 	GetUserId() int
 	GetUser(userid int) (any, error)
@@ -25,7 +27,8 @@ type Token struct {
 }
 
 type CustomClaims struct {
-	UserId int `json:"userId"`
+	UserId int   `json:"userId"`
+	Guard  Guard `json:"guard,omitempty"`
 	jwt.RegisteredClaims
 }
 
