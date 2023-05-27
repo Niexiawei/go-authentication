@@ -6,7 +6,7 @@ import (
 	golangutils "github.com/Niexiawei/golang-utils"
 	"github.com/Niexiawei/golang-utils/pathtool"
 	"github.com/Niexiawei/golang-utils/random"
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v5"
 	"io"
 	"os"
 	"path/filepath"
@@ -69,19 +69,21 @@ func clearExpireCacheAuth() {
 	}()
 }
 
-func (j *Jwt) GetTokenWithGuard(user AuthenticationUserModel, guard Guard, expireHour ...int) (*Token, error) {
-	expire := 24 * 7
-	if len(expireHour) > 0 {
-		expire = expireHour[0]
+func (j *Jwt) GetToken(user AuthenticationUserModel, options ...GetTokenOptions) (*Token, error) {
+	params := &GetTokenParams{
+		Expire: 24 * 7,
 	}
 
-	expireDate := time.Now().Add(time.Duration(expire) * time.Hour)
+	for _, o := range options {
+		o(params)
+	}
+
+	expireDate := time.Now().Add(params.Expire * time.Hour)
 	claims := jwt.NewWithClaims(jwt.SigningMethodHS256, CustomClaims{
 		UserId: user.GetUserId(),
-		Guard:  guard,
+		Guard:  user.GetGuard(),
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expireDate),
-			Issuer:    "huaming.cn",
 		},
 	})
 
@@ -92,72 +94,6 @@ func (j *Jwt) GetTokenWithGuard(user AuthenticationUserModel, guard Guard, expir
 	}
 
 	return &Token{Token: token, ExpiresIn: expireDate.Unix()}, nil
-}
-
-func (j *Jwt) GetToken(user AuthenticationUserModel, expireHour ...int) (*Token, error) {
-	expire := 24 * 7
-	if len(expireHour) > 0 {
-		expire = expireHour[0]
-	}
-
-	expireDate := time.Now().Add(time.Duration(expire) * time.Hour)
-	claims := jwt.NewWithClaims(jwt.SigningMethodHS256, CustomClaims{
-		UserId: user.GetUserId(),
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(expireDate),
-			Issuer:    "huaming.cn",
-		},
-	})
-
-	token, err := claims.SignedString(j.signKey)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &Token{Token: token, ExpiresIn: expireDate.Unix()}, nil
-}
-
-func (j *Jwt) GetUserByTokenWithGuard(t string) (AuthenticationUserModel, Guard, error) {
-	claims := CustomClaims{}
-	token, err := jwt.ParseWithClaims(t, &claims, func(token *jwt.Token) (interface{}, error) {
-		return j.signKey, nil
-	})
-	if err != nil {
-		return nil, "", err
-	}
-
-	if !token.Valid {
-		return nil, "", TokenVerifyError
-	}
-
-	if claims.ExpiresAt.Before(time.Now()) {
-		return nil, "", TokenVerifyExpireError
-	}
-
-	{
-		if val, ok := cacheVerifyUser[claims.UserId]; ok {
-			if val.Expire.After(time.Now()) {
-				return val.User, claims.Guard, nil
-			}
-			mapLock.Lock()
-			delete(cacheVerifyUser, claims.UserId)
-			mapLock.Unlock()
-		}
-	}
-
-	userTypeAny, err := j.GetUser(claims.UserId)
-	if err != nil {
-		return nil, "", err
-	}
-	user := userTypeAny.(AuthenticationUserModel)
-	mapLock.Lock()
-	cacheVerifyUser[claims.UserId] = CacheUserAfterVerify{
-		User:   user,
-		Expire: time.Now().Add(j.cacheVerifyUserExpire),
-	}
-	mapLock.Unlock()
-	return user, claims.Guard, nil
 }
 
 func (j *Jwt) GetUserByToken(t string) (AuthenticationUserModel, error) {
@@ -206,14 +142,14 @@ func (j *Jwt) RefreshSignKey() error {
 	if j.signKeyPath == "" {
 		return ErrNoSetSignKeyPath
 	}
-	newpath := j.signKeyPath + "_backup"
-	_ = os.Rename(j.signKeyPath, newpath)
+	newPath := j.signKeyPath + "_backup"
+	_ = os.Rename(j.signKeyPath, newPath)
 	_, err := getSignKey(j.signKeyPath)
 	if err != nil {
-		_ = os.Rename(newpath, j.signKeyPath)
+		_ = os.Rename(newPath, j.signKeyPath)
 		return fmt.Errorf("%w(%s)", ErrRefreshSignKeyFail, err.Error())
 	}
-	_ = os.Remove(newpath)
+	_ = os.Remove(newPath)
 	return nil
 }
 

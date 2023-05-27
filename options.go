@@ -28,3 +28,11 @@ func JwtWithSignKeyPath(path string) Options {
 		j.signKeyPath = path
 	}
 }
+
+type GetTokenOptions func(g *GetTokenParams)
+
+func GetTokenWithExpire(duration time.Duration) GetTokenOptions {
+	return func(g *GetTokenParams) {
+		g.Expire = duration
+	}
+}

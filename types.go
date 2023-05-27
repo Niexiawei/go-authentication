@@ -1,7 +1,7 @@
 package authentication
 
 import (
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v5"
 	"time"
 )
 
@@ -14,6 +14,7 @@ type Guard string
 type AuthenticationUserModel interface {
 	GetUserId() int
 	GetUser(userid int) (any, error)
+	GetGuard() Guard
 }
 
 type CacheUserAfterVerify struct {
@@ -46,4 +47,8 @@ type ginContext interface {
 	Next()
 	Set(key string, value any)
 	JSON(code int, obj any)
+}
+
+type GetTokenParams struct {
+	Expire time.Duration
 }
