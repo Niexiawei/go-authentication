@@ -2,6 +2,7 @@ package authentication
 
 import (
 	"fmt"
+	"github.com/golang-jwt/jwt/v5"
 	"path/filepath"
 	"testing"
 )
@@ -44,6 +45,26 @@ func TestJwt_generateToken(t *testing.T) {
 		return
 	}
 	fmt.Println(token)
+}
+
+func TestJwt_generateTokenWithClaims(t *testing.T) {
+	u := &TestModel{
+		Id:       1,
+		UserName: "哈哈哈哈",
+	}
+	token, err := CurrJwt.GetToken(u, GetTokenWithClaims(jwt.RegisteredClaims{
+		Issuer:  "test.com",
+		Subject: "哈哈哈哈",
+	}))
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	c := CustomClaims{}
+	_, _ = jwt.ParseWithClaims(token.Token, &c, func(token *jwt.Token) (interface{}, error) {
+		return defaultSignKey, nil
+	})
+	fmt.Printf("%+v", c)
 }
 
 func TestJwt_RefreshSignKey(t *testing.T) {

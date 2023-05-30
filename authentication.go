@@ -72,6 +72,7 @@ func clearExpireCacheAuth() {
 func (j *Jwt) GetToken(user AuthenticationUserModel, options ...GetTokenOptions) (*Token, error) {
 	params := &GetTokenParams{
 		Expire: 24 * 7,
+		Claims: jwt.RegisteredClaims{},
 	}
 
 	for _, o := range options {
@@ -79,12 +80,11 @@ func (j *Jwt) GetToken(user AuthenticationUserModel, options ...GetTokenOptions)
 	}
 
 	expireDate := time.Now().Add(params.Expire * time.Hour)
+	params.Claims.ExpiresAt = jwt.NewNumericDate(expireDate)
 	claims := jwt.NewWithClaims(jwt.SigningMethodHS256, CustomClaims{
-		UserId: user.GetUserId(),
-		Guard:  user.GetGuard(),
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(expireDate),
-		},
+		UserId:           user.GetUserId(),
+		Guard:            user.GetGuard(),
+		RegisteredClaims: params.Claims,
 	})
 
 	token, err := claims.SignedString(j.signKey)

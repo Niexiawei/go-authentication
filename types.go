@@ -51,4 +51,5 @@ type ginContext interface {
 
 type GetTokenParams struct {
 	Expire time.Duration
+	Claims jwt.RegisteredClaims
 }

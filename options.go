@@ -1,6 +1,7 @@
 package authentication
 
 import (
+	"github.com/golang-jwt/jwt/v5"
 	"time"
 )
 
@@ -34,5 +35,11 @@ type GetTokenOptions func(g *GetTokenParams)
 func GetTokenWithExpire(duration time.Duration) GetTokenOptions {
 	return func(g *GetTokenParams) {
 		g.Expire = duration
+	}
+}
+
+func GetTokenWithClaims(claims jwt.RegisteredClaims) GetTokenOptions {
+	return func(g *GetTokenParams) {
+		g.Claims = claims
 	}
 }
