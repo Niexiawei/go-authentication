@@ -14,14 +14,13 @@ func AuthenticationMiddleware[T ginContext](j *Jwt) func(T) {
 func Authentication(j *Jwt, c ginContext) {
 	var (
 		token string
-		resp  = httpresponse.NewResponse(c, 0, "")
 	)
 
 	t1 := c.GetHeader("token")
 	t2, _ := c.GetQuery("token")
 
 	if t1 == "" && t2 == "" {
-		resp.WithMessage(TokenVerifyError.Error()).WithCode(401).ResultOk()
+		httpresponse.ResultFail(c, 401, TokenVerifyError.Error())
 		c.Abort()
 		return
 	}
@@ -38,11 +37,11 @@ func Authentication(j *Jwt, c ginContext) {
 
 	if err != nil {
 		if errors.Is(err, TokenVerifyError) {
-			resp.WithMessage(TokenVerifyError.Error()).WithCode(401).ResultOk()
+			httpresponse.ResultFail(c, 401, TokenVerifyError.Error())
 		} else if errors.Is(err, TokenVerifyExpireError) {
-			resp.WithMessage(TokenVerifyExpireError.Error()).WithCode(403).ResultOk()
+			httpresponse.ResultFail(c, 403, TokenVerifyExpireError.Error())
 		} else {
-			resp.WithMessage(TokenVerifyError.Error()).WithCode(401).ResultOk()
+			httpresponse.ResultFail(c, 401, TokenVerifyError.Error())
 		}
 		c.Abort()
 		return

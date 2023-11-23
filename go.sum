@@ -1,6 +1,8 @@
 github.com/Niexiawei/golang-utils v0.0.0-20230210071210-79b272974969/go.mod h1:/j2vXEoTov17nqx1cVQxWuE/puYhvEt2eYicEDJEIaw=
 github.com/Niexiawei/golang-utils v0.0.0-20230720035049-c28909ce68d5 h1:o2FrvKj/hs7T//g/VmmEtxtFrWiXOzB7EZeqe8Ru6GY=
 github.com/Niexiawei/golang-utils v0.0.0-20230720035049-c28909ce68d5/go.mod h1:IfE1mpReqNojZ56lMY2cK63qyWrQHhbhygL5xhgnlAA=
+github.com/Niexiawei/golang-utils v0.0.0-20231120004652-ac8f6ff94a9d h1:pgbQ2m7tjlrwBPZwX4UMzMwP2IcYlqbp4/pbbDAVF3M=
+github.com/Niexiawei/golang-utils v0.0.0-20231120004652-ac8f6ff94a9d/go.mod h1:NkkV7i0nxZPvgPURAJy0QpZnV2GCn7CITSJbT+FrEBo=
 github.com/golang-jwt/jwt/v5 v4.4.3 h1:Hxl6lhQFj4AnOX6MLrsCb/+7tCj7DxP7VA+2rDIq5AU=
 github.com/golang-jwt/jwt/v5 v4.4.3/go.mod h1:m21LjoU+eqJr34lmDMbreY2eSTRJ1cv77w39/MY0Ch0=
 github.com/golang-jwt/jwt/v5 v5.0.0 h1:1n1XNM9hk7O9mnQoNBGolZvzebBQ7p93ULHRc28XJUE=

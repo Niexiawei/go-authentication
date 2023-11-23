@@ -44,7 +44,7 @@ func TestJwt_generateToken(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	fmt.Println(token)
+	fmt.Printf("%+v", token)
 }
 
 func TestJwt_generateTokenWithClaims(t *testing.T) {
@@ -52,10 +52,10 @@ func TestJwt_generateTokenWithClaims(t *testing.T) {
 		Id:       1,
 		UserName: "哈哈哈哈",
 	}
-	token, err := CurrJwt.GetToken(u, GetTokenWithClaims(jwt.RegisteredClaims{
+	token, err := CurrJwt.GetToken(u, jwt.RegisteredClaims{
 		Issuer:  "test.com",
 		Subject: "哈哈哈哈",
-	}))
+	})
 	if err != nil {
 		t.Error(err)
 		return

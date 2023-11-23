@@ -9,6 +9,17 @@ const (
 	GetAuthKey = "authentication"
 )
 
+var (
+	TimeDay       = time.Hour * 24
+	defaultConfig = &Config{
+		CacheVerifyUserExpire: 7 * time.Hour,
+		TokenExpire:           8 * time.Hour,
+		RefreshTokenExpire:    14 * TimeDay,
+		SignKey:               string(defaultSignKey),
+		SignKeyPath:           "",
+	}
+)
+
 type Guard string
 
 type AuthenticationUserModel interface {
@@ -23,21 +34,26 @@ type CacheUserAfterVerify struct {
 }
 
 type Token struct {
-	Token     string `json:"token"`
-	ExpiresIn int64  `json:"expires_in"`
+	Token                 string `json:"token"`
+	ExpiresIn             int64  `json:"expires_in"`
+	RefreshToken          string `json:"refresh_token"`
+	RefreshTokenExpiresIn int64  `json:"refresh_token_expires_in"`
 }
 
 type CustomClaims struct {
-	UserId int   `json:"userId"`
-	Guard  Guard `json:"guard,omitempty"`
+	UserId     int               `json:"userId"`
+	Guard      Guard             `json:"guard,omitempty"`
+	CustomData map[string]string `json:"-"`
 	jwt.RegisteredClaims
 }
 
 type Jwt struct {
 	AuthenticationUserModel
-	cacheVerifyUserExpire time.Duration
-	signKey               []byte
-	signKeyPath           string
+	config  *Config
+	signKey []byte
+}
+
+type echoContent interface {
 }
 
 type ginContext interface {
@@ -50,6 +66,13 @@ type ginContext interface {
 }
 
 type GetTokenParams struct {
-	Expire time.Duration
 	Claims jwt.RegisteredClaims
+}
+
+type Config struct {
+	CacheVerifyUserExpire time.Duration
+	TokenExpire           time.Duration
+	RefreshTokenExpire    time.Duration
+	SignKey               string
+	SignKeyPath           string
 }

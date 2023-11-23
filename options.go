@@ -1,7 +1,6 @@
 package authentication
 
 import (
-	"github.com/golang-jwt/jwt/v5"
 	"time"
 )
 
@@ -9,7 +8,7 @@ type Options func(j *Jwt)
 
 func JwtWithCacheVerifyUserExpire(duration time.Duration) Options {
 	return func(j *Jwt) {
-		j.cacheVerifyUserExpire = duration
+		j.config.CacheVerifyUserExpire = duration
 	}
 }
 
@@ -26,20 +25,21 @@ func JwtWithSignKeyPath(path string) Options {
 			panic(err)
 		}
 		j.signKey = key
-		j.signKeyPath = path
+		j.config.SignKeyPath = path
+		j.config.SignKey = string(key)
 	}
 }
 
-type GetTokenOptions func(g *GetTokenParams)
-
-func GetTokenWithExpire(duration time.Duration) GetTokenOptions {
-	return func(g *GetTokenParams) {
-		g.Expire = duration
-	}
-}
-
-func GetTokenWithClaims(claims jwt.RegisteredClaims) GetTokenOptions {
-	return func(g *GetTokenParams) {
-		g.Claims = claims
+func WithConfig(c *Config) Options {
+	return func(j *Jwt) {
+		j.config = c
+		if c.SignKeyPath != "" {
+			key, err := getSignKey(c.SignKeyPath)
+			if err != nil {
+				panic(err)
+			}
+			j.signKey = key
+			j.config.SignKey = string(key)
+		}
 	}
 }
