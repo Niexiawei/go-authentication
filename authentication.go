@@ -103,19 +103,18 @@ func (j *Jwt) GetToken(user AuthenticationUserModel, registeredClaims ...jwt.Reg
 
 	{
 		var err error
+		customData := map[string]string{
+			"token": token,
+		}
 		refreshTokenExpire = time.Now().Add(j.config.RefreshTokenExpire)
 		myClaims.ExpiresAt = jwt.NewNumericDate(refreshTokenExpire)
 		claims := jwt.NewWithClaims(jwt.SigningMethodHS256, CustomClaims{
-			user.GetUserId(),
-			user.GetGuard(),
-			map[string]string{
-				"token": token,
-			},
-			myClaims,
+			IsRefreshToken:   true,
+			CustomData:       customData,
+			RegisteredClaims: myClaims,
 		})
 
 		refreshToken, err = claims.SignedString(j.signKey)
-
 		if err != nil {
 			return nil, err
 		}
@@ -129,6 +128,36 @@ func (j *Jwt) GetToken(user AuthenticationUserModel, registeredClaims ...jwt.Reg
 	}
 
 	return &t, nil
+}
+
+func (j *Jwt) VerifyRefreshToken(t, rt string) bool {
+	claims := CustomClaims{}
+	token, err := jwt.ParseWithClaims(rt, &claims, func(token *jwt.Token) (interface{}, error) {
+		return j.signKey, nil
+	})
+	if err != nil {
+		return false
+	}
+
+	if !token.Valid {
+		return false
+	}
+
+	fmt.Printf("%+v", claims)
+
+	if claims.ExpiresAt.Before(time.Now()) {
+		return false
+	}
+	fmt.Println(claims.CustomData)
+	if token, ok := claims.CustomData["token"]; ok {
+		return token == t && claims.IsRefreshToken == true
+	}
+
+	return false
+}
+
+func (j *Jwt) GetTokenByRefreshToken() (*Token, error) {
+	return nil, nil
 }
 
 func (j *Jwt) GetUserByToken(t string) (AuthenticationUserModel, error) {

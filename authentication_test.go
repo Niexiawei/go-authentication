@@ -39,12 +39,31 @@ func TestJwt_generateToken(t *testing.T) {
 		Id:       1,
 		UserName: "哈哈哈哈",
 	}
-	token, err := CurrJwt.GetToken(u)
+	token, err := CurrJwt.GetToken(u, jwt.RegisteredClaims{
+		Issuer: "test.com",
+		ID:     "6666",
+	})
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	fmt.Printf("%+v", token)
+	fmt.Printf("%s\n%s\n", token.Token, token.RefreshToken)
+}
+
+func TestJwt_VerifyRefreshToken(t *testing.T) {
+	u := &TestModel{
+		Id:       1,
+		UserName: "哈哈哈哈",
+	}
+	token, err := CurrJwt.GetToken(u, jwt.RegisteredClaims{
+		Issuer: "test.com",
+		ID:     "6666",
+	})
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	t.Log(CurrJwt.VerifyRefreshToken(token.Token, token.RefreshToken))
 }
 
 func TestJwt_generateTokenWithClaims(t *testing.T) {
@@ -53,8 +72,7 @@ func TestJwt_generateTokenWithClaims(t *testing.T) {
 		UserName: "哈哈哈哈",
 	}
 	token, err := CurrJwt.GetToken(u, jwt.RegisteredClaims{
-		Issuer:  "test.com",
-		Subject: "哈哈哈哈",
+		Issuer: "test.com",
 	})
 	if err != nil {
 		t.Error(err)

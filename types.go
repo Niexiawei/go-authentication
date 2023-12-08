@@ -41,9 +41,10 @@ type Token struct {
 }
 
 type CustomClaims struct {
-	UserId     int               `json:"userId"`
-	Guard      Guard             `json:"guard,omitempty"`
-	CustomData map[string]string `json:"-"`
+	UserId         int               `json:"userId"`
+	Guard          Guard             `json:"guard,omitempty"`
+	IsRefreshToken bool              `json:"isRefreshToken"`
+	CustomData     map[string]string `json:"customData"`
 	jwt.RegisteredClaims
 }
 
