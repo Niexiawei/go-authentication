@@ -20,7 +20,7 @@ func Authentication(j *Jwt, c ginContext) {
 	t2, _ := c.GetQuery("token")
 
 	if t1 == "" && t2 == "" {
-		httpresponse.ResultFail(c, 401, TokenVerifyError.Error())
+		httpresponse.ResultFail(c, 401, ErrTokenNotFound.Error())
 		c.Abort()
 		return
 	}

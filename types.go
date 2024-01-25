@@ -12,13 +12,17 @@ const (
 var (
 	TimeDay       = time.Hour * 24
 	defaultConfig = &Config{
-		CacheVerifyUserExpire: 7 * time.Hour,
+		CacheVerifyUserExpire: 1 * time.Hour,
 		TokenExpire:           8 * time.Hour,
 		RefreshTokenExpire:    14 * TimeDay,
 		SignKey:               string(defaultSignKey),
 		SignKeyPath:           "",
 	}
 )
+
+func NewDefaultConfig() *Config {
+	return defaultConfig
+}
 
 type Guard string
 
@@ -54,9 +58,6 @@ type Jwt struct {
 	signKey []byte
 }
 
-type echoContent interface {
-}
-
 type ginContext interface {
 	GetHeader(key string) string
 	GetQuery(key string) (string, bool)
@@ -71,9 +72,9 @@ type GetTokenParams struct {
 }
 
 type Config struct {
-	CacheVerifyUserExpire time.Duration
-	TokenExpire           time.Duration
-	RefreshTokenExpire    time.Duration
-	SignKey               string
-	SignKeyPath           string
+	CacheVerifyUserExpire time.Duration `json:"cacheVerifyUserExpire" yaml:"cacheVerifyUserExpire"`
+	TokenExpire           time.Duration `json:"tokenExpire" yaml:"tokenExpire"`
+	RefreshTokenExpire    time.Duration `json:"refreshTokenExpire" yaml:"refreshTokenExpire"`
+	SignKey               string        `json:"signKey" yaml:"signKey"`
+	SignKeyPath           string        `json:"signKeyPath" yaml:"signKeyPath"`
 }

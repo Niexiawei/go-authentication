@@ -103,3 +103,24 @@ func Test_getSignKey(t *testing.T) {
 	}
 	fmt.Println(string(sign))
 }
+
+func Test_GetUserByToken(t *testing.T) {
+	u := &TestModel{
+		Id:       1,
+		UserName: "哈哈哈哈",
+	}
+	token, err := CurrJwt.GetToken(u, jwt.RegisteredClaims{
+		Issuer: "test.com",
+		ID:     "6666",
+	})
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	user, err := CurrJwt.GetUserByToken(token.Token)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	fmt.Printf("%#v", user)
+}

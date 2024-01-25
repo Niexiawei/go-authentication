@@ -15,14 +15,24 @@ import (
 )
 
 var (
-	mapLock                sync.Mutex
+	runOnce = sync.Once{}
+	mapLock sync.Mutex
+
+	ErrTokenNotFound = errors.New("token不能为空")
+
 	TokenVerifyError       = errors.New("token验证失败！")
 	TokenVerifyExpireError = errors.New("token已失效！")
 	ErrNoSetSignKeyPath    = errors.New("没有设置 sign key 存储路径")
 	ErrRefreshSignKeyFail  = errors.New("刷新 sign key 失败")
 	defaultSignKey         = []byte("authenticationsignkey")
-	cacheVerifyUser        = map[int]CacheUserAfterVerify{}
+	cacheVerifyUser        = map[int]*CacheUserAfterVerify{}
 )
+
+func init() {
+	runOnce.Do(func() {
+		clearExpireCacheAuth()
+	})
+}
 
 func NewJwt(model AuthenticationUserModel, options ...Options) *Jwt {
 	j := &Jwt{
@@ -33,7 +43,6 @@ func NewJwt(model AuthenticationUserModel, options ...Options) *Jwt {
 	for _, o := range options {
 		o(j)
 	}
-	clearExpireCacheAuth()
 	return j
 }
 
@@ -69,6 +78,54 @@ func clearExpireCacheAuth() {
 	}()
 }
 
+func (j *Jwt) ClearUserCache(user AuthenticationUserModel) {
+	mapLock.Lock()
+	defer mapLock.Unlock()
+	if _, ok := cacheVerifyUser[user.GetUserId()]; ok {
+		delete(cacheVerifyUser, user.GetUserId())
+	}
+}
+
+func (j *Jwt) GenerateTemporaryToken(user AuthenticationUserModel, expire time.Duration, registeredClaims ...jwt.RegisteredClaims) (*Token, error) {
+	var (
+		myClaims = jwt.RegisteredClaims{}
+	)
+
+	if len(registeredClaims) > 0 {
+		myClaims = registeredClaims[0]
+	}
+
+	var (
+		token       string
+		tokenExpire time.Time
+	)
+
+	{
+		var err error
+		tokenExpire = time.Now().Add(expire)
+		myClaims.ExpiresAt = jwt.NewNumericDate(tokenExpire)
+		claims := jwt.NewWithClaims(jwt.SigningMethodHS256, CustomClaims{
+			UserId:           user.GetUserId(),
+			Guard:            user.GetGuard(),
+			RegisteredClaims: myClaims,
+		})
+
+		token, err = claims.SignedString(j.signKey)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	t := Token{
+		Token:                 token,
+		ExpiresIn:             tokenExpire.Unix(),
+		RefreshToken:          "",
+		RefreshTokenExpiresIn: 0,
+	}
+
+	return &t, nil
+}
+
 func (j *Jwt) GetToken(user AuthenticationUserModel, registeredClaims ...jwt.RegisteredClaims) (*Token, error) {
 	var (
 		myClaims = jwt.RegisteredClaims{}
@@ -94,7 +151,6 @@ func (j *Jwt) GetToken(user AuthenticationUserModel, registeredClaims ...jwt.Reg
 			Guard:            user.GetGuard(),
 			RegisteredClaims: myClaims,
 		})
-
 		token, err = claims.SignedString(j.signKey)
 		if err != nil {
 			return nil, err
@@ -142,13 +198,9 @@ func (j *Jwt) VerifyRefreshToken(t, rt string) bool {
 	if !token.Valid {
 		return false
 	}
-
-	fmt.Printf("%+v", claims)
-
 	if claims.ExpiresAt.Before(time.Now()) {
 		return false
 	}
-	fmt.Println(claims.CustomData)
 	if token, ok := claims.CustomData["token"]; ok {
 		return token == t && claims.IsRefreshToken == true
 	}
@@ -165,6 +217,7 @@ func (j *Jwt) GetUserByToken(t string) (AuthenticationUserModel, error) {
 	token, err := jwt.ParseWithClaims(t, &claims, func(token *jwt.Token) (interface{}, error) {
 		return j.signKey, nil
 	})
+
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +247,7 @@ func (j *Jwt) GetUserByToken(t string) (AuthenticationUserModel, error) {
 	}
 	user := userTypeAny.(AuthenticationUserModel)
 	mapLock.Lock()
-	cacheVerifyUser[claims.UserId] = CacheUserAfterVerify{
+	cacheVerifyUser[claims.UserId] = &CacheUserAfterVerify{
 		User:   user,
 		Expire: time.Now().Add(j.config.CacheVerifyUserExpire),
 	}
